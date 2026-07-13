@@ -1,0 +1,48 @@
+.main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 24px;
+}
+
+.title {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.description {
+  font-size: 1.1rem;
+  color: #94a3b8;
+  max-width: 480px;
+  margin-bottom: 24px;
+}
+
+.toggleButton {
+  background: #a78bfa;
+  color: #1e1b3a;
+  border: none;
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.toggleButton:hover {
+  background: #c4b5fd;
+  transform: translateY(-2px);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+  .title {
+    font-size: 1.9rem;
+  }
+}
