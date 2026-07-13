@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import styles from "./dashboard.module.css";
 
+type RangeKey = "week" | "month" | "year";
+
 type DailyPoint = {
   date: string;
   views: number;
@@ -13,6 +15,18 @@ type Ga4Report = {
   previousTotalViews: number;
   percentChange: number;
   daily: DailyPoint[];
+};
+
+const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
+  { key: "week", label: "Esta semana" },
+  { key: "month", label: "Este Mes" },
+  { key: "year", label: "Este año" },
+];
+
+const SUBTITLE_BY_RANGE: Record<RangeKey, string> = {
+  week: "Vistas de página de esta semana",
+  month: "Vistas de página de este mes",
+  year: "Vistas de página de este año",
 };
 
 function formatDayLabel(isoDate: string): string {
@@ -66,21 +80,33 @@ function LineChart({ data }: { data: DailyPoint[] }) {
 }
 
 export default function DashboardPage() {
+  const [range, setRange] = useState<RangeKey>("week");
   const [report, setReport] = useState<Ga4Report | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/ga4-views")
+    let cancelled = false;
+    setReport(null);
+    setError(null);
+    fetch(`/api/ga4-views?range=${range}`)
       .then((res) => res.json())
       .then((data) => {
+        if (cancelled) return;
         if (data.error) {
           setError(data.error);
         } else {
           setReport(data);
         }
       })
-      .catch(() => setError("No se pudo conectar con la API de Analytics"));
-  }, []);
+      .catch(() => {
+        if (!cancelled) {
+          setError("No se pudo conectar con la API de Analytics");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [range]);
 
   const changeDirection =
     report && report.percentChange > 0
@@ -100,48 +126,64 @@ export default function DashboardPage() {
     changeDirection === "up" ? "▲" : changeDirection === "down" ? "▼" : "—";
 
   return (
-    <main className={styles.main}>
-      <h1 className={styles.title}>Dashboard</h1>
-      <p className={styles.subtitle}>
-        Vistas de página de los últimos 30 días
-      </p>
+    <div className={styles.page}>
+      <div className={styles.filters}>
+        {RANGE_OPTIONS.map((option) => (
+          <button
+            key={option.key}
+            className={`${styles.filterButton} ${
+              range === option.key ? styles.filterButtonActive : ""
+            }`}
+            onClick={() => setRange(option.key)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
 
-      {error ? (
-        <div className={styles.card}>
-          <p className={styles.error}>{error}</p>
-        </div>
-      ) : !report ? (
-        <div className={styles.card}>
-          <p className={styles.loading}>Cargando...</p>
-        </div>
-      ) : (
-        <>
+      <main className={styles.main}>
+        <h1 className={styles.title}>Dashboard</h1>
+        <p className={styles.subtitle}>{SUBTITLE_BY_RANGE[range]}</p>
+
+        {error ? (
           <div className={styles.card}>
-            <span className={styles.count}>
-              {report.totalViews.toLocaleString("es-AR")}
-            </span>
-            <div className={`${styles.change} ${changeClass}`}>
-              <span className={styles.arrow}>{arrow}</span>
-              <span>
-                {Math.abs(report.percentChange).toLocaleString("es-AR")}% vs.
-                período anterior
-              </span>
-            </div>
+            <p className={styles.error}>{error}</p>
           </div>
-
-          {report.daily.length > 0 && (
-            <div className={styles.chartCard}>
-              <LineChart data={report.daily} />
-              <div className={styles.chartLabels}>
-                <span>{formatDayLabel(report.daily[0].date)}</span>
+        ) : !report ? (
+          <div className={styles.card}>
+            <p className={styles.loading}>Cargando...</p>
+          </div>
+        ) : (
+          <>
+            <div className={styles.card}>
+              <span className={styles.count}>
+                {report.totalViews.toLocaleString("es-AR")}
+              </span>
+              <div className={`${styles.change} ${changeClass}`}>
+                <span className={styles.arrow}>{arrow}</span>
                 <span>
-                  {formatDayLabel(report.daily[report.daily.length - 1].date)}
+                  {Math.abs(report.percentChange).toLocaleString("es-AR")}%
+                  vs. período anterior
                 </span>
               </div>
             </div>
-          )}
-        </>
-      )}
-    </main>
+
+            {report.daily.length > 0 && (
+              <div className={styles.chartCard}>
+                <LineChart data={report.daily} />
+                <div className={styles.chartLabels}>
+                  <span>{formatDayLabel(report.daily[0].date)}</span>
+                  <span>
+                    {formatDayLabel(
+                      report.daily[report.daily.length - 1].date
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </main>
+    </div>
   );
 }
