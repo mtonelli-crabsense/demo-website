@@ -3,10 +3,6 @@ import { BetaAnalyticsDataClient } from "@google-analytics/data";
 
 export const dynamic = "force-dynamic";
 
-type RangeKey = "week" | "month" | "year";
-
-const VALID_RANGES: RangeKey[] = ["week", "month", "year"];
-
 function formatGaDate(rawDate: string): string {
   return `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
 }
@@ -24,42 +20,51 @@ function addDays(date: Date, days: number): Date {
   return result;
 }
 
-function getDateWindow(range: RangeKey) {
+function parseIsoDate(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+  const [y, m, d] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (
+    date.getUTCFullYear() !== y ||
+    date.getUTCMonth() !== m - 1 ||
+    date.getUTCDate() !== d
+  ) {
+    return null;
+  }
+  return date;
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const startParam = searchParams.get("startDate");
+  const endParam = searchParams.get("endDate");
+
   const now = new Date();
   const today = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   );
 
-  let start: Date;
-  if (range === "week") {
-    const dayOfWeek = today.getUTCDay();
-    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    start = addDays(today, -diffToMonday);
-  } else if (range === "month") {
-    start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-  } else {
-    start = new Date(Date.UTC(today.getUTCFullYear(), 0, 1));
+  let start = startParam ? parseIsoDate(startParam) : null;
+  let end = endParam ? parseIsoDate(endParam) : null;
+
+  if (!start || !end) {
+    // Sin parámetros válidos: por defecto, los últimos 30 días.
+    end = today;
+    start = addDays(today, -29);
   }
 
-  const periodLengthDays =
-    Math.round((today.getTime() - start.getTime()) / 86_400_000) + 1;
-  const previousEnd = addDays(start, -1);
-  const previousStart = addDays(previousEnd, -(periodLengthDays - 1));
+  if (end.getTime() > today.getTime()) {
+    end = today;
+  }
 
-  return {
-    startDate: formatDate(start),
-    endDate: formatDate(today),
-    previousStartDate: formatDate(previousStart),
-    previousEndDate: formatDate(previousEnd),
-  };
-}
-
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const rangeParam = searchParams.get("range");
-  const range: RangeKey = VALID_RANGES.includes(rangeParam as RangeKey)
-    ? (rangeParam as RangeKey)
-    : "week";
+  if (start.getTime() > end.getTime()) {
+    return NextResponse.json(
+      { error: "La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'" },
+      { status: 400 }
+    );
+  }
 
   const propertyId = process.env.GA4_PROPERTY_ID;
   const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
@@ -84,11 +89,19 @@ export async function GET(request: Request) {
     );
   }
 
+  const startDate = formatDate(start);
+  const endDate = formatDate(end);
+
+  const periodLengthDays =
+    Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  const previousEnd = addDays(start, -1);
+  const previousStart = addDays(previousEnd, -(periodLengthDays - 1));
+  const previousStartDate = formatDate(previousStart);
+  const previousEndDate = formatDate(previousEnd);
+
   try {
     const analyticsDataClient = new BetaAnalyticsDataClient({ credentials });
     const property = `properties/${propertyId}`;
-    const { startDate, endDate, previousStartDate, previousEndDate } =
-      getDateWindow(range);
 
     const [dailyResponse, previousResponse] = await Promise.all([
       analyticsDataClient.runReport({
@@ -123,7 +136,8 @@ export async function GET(request: Request) {
         : ((totalViews - previousTotalViews) / previousTotalViews) * 100;
 
     return NextResponse.json({
-      range,
+      startDate,
+      endDate,
       totalViews,
       previousTotalViews,
       percentChange: Math.round(percentChange * 10) / 10,

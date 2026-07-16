@@ -3,42 +3,85 @@
   min-height: 100vh;
 }
 
-.filters {
+.filterBar {
   position: absolute;
   top: 24px;
   right: 24px;
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
   z-index: 5;
 }
 
-.filterButton {
-  background: transparent;
-  border: 1px solid #1e293b;
+.filterRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dateField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dateLabel {
+  font-size: 0.75rem;
   color: #94a3b8;
-  padding: 8px 14px;
+  text-align: left;
+}
+
+.dateInput {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  color: #f1f5f9;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color-scheme: dark;
+  transition: border-color 0.15s ease;
+}
+
+.dateInput:hover {
+  border-color: #38bdf8;
+}
+
+.dateInput:focus {
+  outline: none;
+  border-color: #38bdf8;
+}
+
+.applyButton {
+  background: #a78bfa;
+  border: 1px solid #a78bfa;
+  color: #1e1b3a;
+  padding: 8px 18px;
   font-size: 0.85rem;
   font-weight: 600;
   border-radius: 8px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, opacity 0.15s ease;
 }
 
-.filterButton:hover {
-  border-color: #38bdf8;
-  color: #f1f5f9;
+.applyButton:hover:not(:disabled) {
+  background: #c4b5fd;
 }
 
-.filterButtonActive {
-  background: #a78bfa;
-  border-color: #a78bfa;
-  color: #1e1b3a;
+.applyButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
-.filterButtonActive:hover {
-  border-color: #a78bfa;
-  color: #1e1b3a;
+.rangeError {
+  font-size: 0.75rem;
+  color: #f87171;
+  margin: 0;
+  max-width: 280px;
+  text-align: right;
 }
 
 .main {
@@ -76,12 +119,14 @@
   border-radius: 12px;
   padding: 32px 48px;
   min-width: 220px;
+  transition: opacity 0.3s ease;
 }
 
 .count {
   font-size: 3rem;
   font-weight: 700;
   color: #a78bfa;
+  transition: opacity 0.3s ease;
 }
 
 .change {
@@ -118,6 +163,16 @@
   max-width: 320px;
 }
 
+.inlineError {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.dimmed {
+  opacity: 0.55;
+}
+
 .chartCard {
   width: 100%;
   max-width: 640px;
@@ -126,6 +181,7 @@
   border: 1px solid #1e293b;
   border-radius: 12px;
   padding: 20px 24px;
+  transition: opacity 0.3s ease;
 }
 
 .chart {
@@ -156,11 +212,18 @@
 }
 
 @media (max-width: 720px) {
-  .filters {
+  .filterBar {
     position: static;
-    justify-content: center;
-    flex-wrap: wrap;
+    align-items: center;
     padding: 16px 16px 0;
+  }
+
+  .filterRow {
+    justify-content: center;
+  }
+
+  .rangeError {
+    text-align: center;
   }
 
   .main {
