@@ -22,6 +22,29 @@ type Ga4Report = {
   daily: DailyPoint[];
 };
 
+type Aggregation = "day" | "week" | "month";
+
+const AGGREGATION_OPTIONS: { key: Aggregation; label: string }[] = [
+  { key: "day", label: "Día" },
+  { key: "week", label: "Semana" },
+  { key: "month", label: "Mes" },
+];
+
+const MONTH_NAMES = [
+  "Ene",
+  "Feb",
+  "Mar",
+  "Abr",
+  "May",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dic",
+];
+
 const SAMPLE_COUNT = 40;
 const ANIMATION_DURATION = 500;
 
@@ -48,9 +71,69 @@ function formatFullDate(isoDate: string): string {
   return `${day}/${month}/${year}`;
 }
 
+function parseIsoUTC(isoDate: string): Date {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+function toIsoUTC(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function startOfWeekKey(isoDate: string): string {
+  const date = parseIsoUTC(isoDate);
+  const day = date.getUTCDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  date.setUTCDate(date.getUTCDate() + diffToMonday);
+  return toIsoUTC(date);
+}
+
+function startOfMonthKey(isoDate: string): string {
+  const [y, m] = isoDate.split("-");
+  return `${y}-${m}-01`;
+}
+
+function aggregateDaily(
+  daily: DailyPoint[],
+  aggregation: Aggregation
+): DailyPoint[] {
+  if (aggregation === "day") return daily;
+
+  const keyFn = aggregation === "week" ? startOfWeekKey : startOfMonthKey;
+  const order: string[] = [];
+  const totals = new Map<string, number>();
+
+  for (const point of daily) {
+    const key = keyFn(point.date);
+    if (!totals.has(key)) {
+      totals.set(key, 0);
+      order.push(key);
+    }
+    totals.set(key, totals.get(key)! + point.views);
+  }
+
+  return order.map((key) => ({ date: key, views: totals.get(key)! }));
+}
+
+function formatAxisLabel(isoDate: string, aggregation: Aggregation): string {
+  if (aggregation === "month") {
+    const [year, month] = isoDate.split("-");
+    return `${MONTH_NAMES[Number(month) - 1]} ${year}`;
+  }
+  return formatDayLabel(isoDate);
+}
+
 function toNormalized(data: DailyPoint[]): NormalizedPoint[] {
-  if (data.length <= 1) {
-    return data.map((d) => ({ t: 0, views: d.views }));
+  if (data.length === 0) return [];
+  if (data.length === 1) {
+    // A single point can't draw a polyline: duplicate it into a flat line.
+    return [
+      { t: 0, views: data[0].views },
+      { t: 1, views: data[0].views },
+    ];
   }
   return data.map((d, i) => ({ t: i / (data.length - 1), views: d.views }));
 }
@@ -129,6 +212,12 @@ export default function DashboardPage() {
   const [report, setReport] = useState<Ga4Report | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [aggregation, setAggregation] = useState<Aggregation>("day");
+
+  const aggregatedDaily = useMemo(
+    () => aggregateDaily(report?.daily ?? [], aggregation),
+    [report, aggregation]
+  );
 
   const [displayPoints, setDisplayPoints] = useState<NormalizedPoint[]>([]);
   const prevNormalizedRef = useRef<NormalizedPoint[] | null>(null);
@@ -172,7 +261,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!report) return;
-    const targetNormalized = toNormalized(report.daily);
+    const targetNormalized = toNormalized(aggregatedDaily);
 
     if (!prevNormalizedRef.current) {
       setDisplayPoints(targetNormalized);
@@ -218,7 +307,7 @@ export default function DashboardPage() {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [report]);
+  }, [aggregatedDaily]);
 
   function handleApply() {
     if (!isRangeValid) return;
@@ -242,6 +331,12 @@ export default function DashboardPage() {
 
   const arrow =
     changeDirection === "up" ? "▲" : changeDirection === "down" ? "▼" : "—";
+
+  const shouldRotateLabels = aggregatedDaily.length > 12;
+  const PX_PER_ROTATED_LABEL = 34;
+  const chartMinWidth = shouldRotateLabels
+    ? Math.max(600, aggregatedDaily.length * PX_PER_ROTATED_LABEL)
+    : undefined;
 
   return (
     <div className={styles.page}>
@@ -335,17 +430,53 @@ export default function DashboardPage() {
                 isLoading ? styles.dimmed : ""
               }`}
             >
-              <LineChart points={displayPoints} />
-              {report.daily.length > 0 && (
-                <div className={styles.chartLabels}>
-                  <span>{formatDayLabel(report.daily[0].date)}</span>
-                  <span>
-                    {formatDayLabel(
-                      report.daily[report.daily.length - 1].date
-                    )}
-                  </span>
+              <div className={styles.aggregationRow}>
+                {AGGREGATION_OPTIONS.map((option) => (
+                  <button
+                    key={option.key}
+                    className={`${styles.aggregationButton} ${
+                      aggregation === option.key
+                        ? styles.aggregationButtonActive
+                        : ""
+                    }`}
+                    onClick={() => setAggregation(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className={styles.chartScrollArea}>
+                <div
+                  className={styles.chartInner}
+                  style={chartMinWidth ? { minWidth: `${chartMinWidth}px` } : undefined}
+                >
+                  <LineChart points={displayPoints} />
+                  {aggregatedDaily.length > 0 && (
+                    <div
+                      className={`${styles.chartLabels} ${
+                        shouldRotateLabels ? styles.chartLabelsRotated : ""
+                      }`}
+                    >
+                      {aggregatedDaily.map((point, i) => {
+                        const t =
+                          aggregatedDaily.length <= 1
+                            ? 0
+                            : i / (aggregatedDaily.length - 1);
+                        return (
+                          <span
+                            key={point.date}
+                            className={styles.chartLabel}
+                            style={{ left: `${t * 100}%` }}
+                          >
+                            {formatAxisLabel(point.date, aggregation)}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </>
         )}

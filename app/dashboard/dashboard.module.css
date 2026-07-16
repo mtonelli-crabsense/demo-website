@@ -203,12 +203,70 @@
   stroke-linecap: round;
 }
 
-.chartLabels {
+.aggregationRow {
   display: flex;
-  justify-content: space-between;
-  margin-top: 8px;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.aggregationButton {
+  background: transparent;
+  border: 1px solid #1e293b;
+  color: #94a3b8;
+  padding: 6px 14px;
   font-size: 0.8rem;
+  font-family: inherit;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.aggregationButton:hover {
+  border-color: #38bdf8;
+  color: #f1f5f9;
+}
+
+.aggregationButtonActive,
+.aggregationButtonActive:hover {
+  background: #a78bfa;
+  border-color: #a78bfa;
+  color: #1e1b3a;
+  font-weight: 600;
+}
+
+.chartScrollArea {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.chartInner {
+  width: 100%;
+  padding: 0 24px;
+}
+
+.chartLabels {
+  position: relative;
+  height: 18px;
+  margin-top: 8px;
+  font-size: 0.75rem;
   color: #64748b;
+}
+
+.chartLabelsRotated {
+  height: 46px;
+  font-size: 0.7rem;
+}
+
+.chartLabel {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.chartLabelsRotated .chartLabel {
+  transform: translateX(-50%) rotate(-45deg);
+  transform-origin: top center;
 }
 
 @media (max-width: 720px) {
