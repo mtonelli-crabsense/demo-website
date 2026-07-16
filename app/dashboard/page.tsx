@@ -48,6 +48,12 @@ const MONTH_NAMES = [
 const SAMPLE_COUNT = 40;
 const ANIMATION_DURATION = 500;
 
+const CHART_WIDTH = 600;
+const CHART_HEIGHT = 160;
+const CHART_PADDING_X = 8;
+const CHART_PADDING_Y = 12;
+const Y_TICK_COUNT = 5;
+
 function toIso(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -126,6 +132,59 @@ function formatAxisLabel(isoDate: string, aggregation: Aggregation): string {
   return formatDayLabel(isoDate);
 }
 
+function formatTooltipLabel(isoDate: string, aggregation: Aggregation): string {
+  if (aggregation === "month") return formatAxisLabel(isoDate, aggregation);
+  if (aggregation === "week") return `Semana del ${formatFullDate(isoDate)}`;
+  return formatFullDate(isoDate);
+}
+
+// "Nice numbers" tick algorithm (Heckbert): rounds the domain out to clean,
+// evenly spaced steps instead of splitting the raw min/max.
+function niceNumber(range: number, round: boolean): number {
+  if (range === 0) return 0;
+  const exponent = Math.floor(Math.log10(range));
+  const fraction = range / Math.pow(10, exponent);
+  let niceFraction: number;
+  if (round) {
+    if (fraction < 1.5) niceFraction = 1;
+    else if (fraction < 3) niceFraction = 2;
+    else if (fraction < 7) niceFraction = 5;
+    else niceFraction = 10;
+  } else {
+    if (fraction <= 1) niceFraction = 1;
+    else if (fraction <= 2) niceFraction = 2;
+    else if (fraction <= 5) niceFraction = 5;
+    else niceFraction = 10;
+  }
+  return niceFraction * Math.pow(10, exponent);
+}
+
+function getNiceTicks(
+  rawMin: number,
+  rawMax: number,
+  tickCount: number
+): number[] {
+  let min = rawMin;
+  let max = rawMax;
+  if (min === max) {
+    min = min === 0 ? 0 : min - 1;
+    max = max === 0 ? 1 : max + 1;
+  }
+
+  const step = niceNumber(niceNumber(max - min, false) / (tickCount - 1), true);
+  const niceMin = Math.floor(min / step) * step;
+  const niceMax = Math.ceil(max / step) * step;
+
+  const ticks: number[] = [];
+  for (let v = niceMin; v <= niceMax + step / 2; v += step) {
+    const rounded = Math.round(v);
+    if (ticks.length === 0 || ticks[ticks.length - 1] !== rounded) {
+      ticks.push(rounded);
+    }
+  }
+  return ticks;
+}
+
 function toNormalized(data: DailyPoint[]): NormalizedPoint[] {
   if (data.length === 0) return [];
   if (data.length === 1) {
@@ -154,27 +213,48 @@ function sampleAt(points: NormalizedPoint[], t: number): number {
   return points[points.length - 1].views;
 }
 
-function LineChart({ points }: { points: NormalizedPoint[] }) {
+type LineChartProps = {
+  points: NormalizedPoint[];
+  dataPoints: DailyPoint[];
+  aggregation: Aggregation;
+  yDomainMin: number;
+  yDomainMax: number;
+  yTicks: number[];
+};
+
+function LineChart({
+  points,
+  dataPoints,
+  aggregation,
+  yDomainMin,
+  yDomainMax,
+  yTicks,
+}: LineChartProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [tooltipScreenPos, setTooltipScreenPos] = useState({ left: 0, top: 0 });
+  const lastHoverIndexRef = useRef<number | null>(null);
+
   if (points.length === 0) {
     return null;
   }
 
-  const width = 600;
-  const height = 160;
-  const paddingX = 8;
-  const paddingY = 12;
+  const width = CHART_WIDTH;
+  const height = CHART_HEIGHT;
+  const paddingX = CHART_PADDING_X;
+  const paddingY = CHART_PADDING_Y;
+  const domainRange = yDomainMax - yDomainMin || 1;
 
-  const viewsArr = points.map((p) => p.views);
-  const max = Math.max(...viewsArr);
-  const min = Math.min(...viewsArr);
-  const range = max - min || 1;
+  function yFor(value: number): number {
+    return (
+      height - paddingY - ((value - yDomainMin) / domainRange) * (height - paddingY * 2)
+    );
+  }
 
   const linePoints = points
     .map((p) => {
       const x = paddingX + p.t * (width - paddingX * 2);
-      const y =
-        height - paddingY - ((p.views - min) / range) * (height - paddingY * 2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
+      return `${x.toFixed(1)},${yFor(p.views).toFixed(1)}`;
     })
     .join(" ");
 
@@ -182,15 +262,144 @@ function LineChart({ points }: { points: NormalizedPoint[] }) {
     width - paddingX
   },${height - paddingY}`;
 
+  const n = dataPoints.length;
+
+  function handlePointerActivity(e: React.PointerEvent<SVGSVGElement>) {
+    const svg = svgRef.current;
+    if (!svg || n === 0) return;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const xViewBox = ((e.clientX - rect.left) / rect.width) * width;
+    const t = Math.min(
+      1,
+      Math.max(0, (xViewBox - paddingX) / (width - paddingX * 2))
+    );
+    const idx = n <= 1 ? 0 : Math.round(t * (n - 1));
+
+    const tExactForIdx = n > 1 ? idx / (n - 1) : 0;
+    const idxXViewBox = paddingX + tExactForIdx * (width - paddingX * 2);
+    const idxYViewBox = yFor(sampleAt(points, tExactForIdx));
+
+    lastHoverIndexRef.current = idx;
+    setHoverIndex(idx);
+    setTooltipScreenPos({
+      left: rect.left + (idxXViewBox / width) * rect.width,
+      top: rect.top + (idxYViewBox / height) * rect.height,
+    });
+  }
+
+  function clearHover() {
+    setHoverIndex(null);
+  }
+
+  const displayIndex = hoverIndex ?? lastHoverIndexRef.current ?? (n > 0 ? 0 : null);
+  const activePoint = displayIndex !== null ? dataPoints[displayIndex] : null;
+  const isHoverVisible = hoverIndex !== null && activePoint !== null;
+  const tExact = activePoint && n > 1 ? (displayIndex as number) / (n - 1) : 0;
+  const hoverX = paddingX + tExact * (width - paddingX * 2);
+  const hoverValue = activePoint ? sampleAt(points, tExact) : 0;
+  const hoverY = yFor(hoverValue);
+
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-      className={styles.chart}
-    >
-      <polygon points={areaPoints} className={styles.chartArea} />
-      <polyline points={linePoints} className={styles.chartLine} />
-    </svg>
+    <div className={styles.chartPlot}>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        className={styles.chart}
+        onPointerMove={handlePointerActivity}
+        onPointerDown={handlePointerActivity}
+        onPointerCancel={clearHover}
+        onPointerLeave={(e) => {
+          // Touch has no hover concept: a tap fires leave right after up,
+          // which would hide the tooltip before it's readable. Keep it
+          // sticky on touch until the next tap; only mouse clears on leave.
+          if (e.pointerType === "mouse") clearHover();
+        }}
+      >
+        {yTicks.map((tick, i) => (
+          <line
+            key={i}
+            x1={paddingX}
+            x2={width - paddingX}
+            y1={yFor(tick)}
+            y2={yFor(tick)}
+            className={styles.gridLine}
+          />
+        ))}
+        <polygon points={areaPoints} className={styles.chartArea} />
+        <polyline points={linePoints} className={styles.chartLine} />
+        <line
+          x1={hoverX}
+          x2={hoverX}
+          y1={paddingY}
+          y2={height - paddingY}
+          className={`${styles.crosshair} ${
+            isHoverVisible ? styles.crosshairVisible : ""
+          }`}
+        />
+        <circle
+          cx={hoverX}
+          cy={hoverY}
+          r={5}
+          className={`${styles.hoverDot} ${
+            isHoverVisible ? styles.hoverDotVisible : ""
+          }`}
+        />
+      </svg>
+      {activePoint && (
+        <div
+          className={`${styles.tooltip} ${
+            isHoverVisible ? styles.tooltipVisible : ""
+          }`}
+          style={{
+            left: `${tooltipScreenPos.left}px`,
+            top: `${tooltipScreenPos.top}px`,
+          }}
+        >
+          <div className={styles.tooltipLabel}>
+            {formatTooltipLabel(activePoint.date, aggregation)}
+          </div>
+          <div className={styles.tooltipValue}>
+            {activePoint.views.toLocaleString("es-AR")}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function YAxis({
+  yTicks,
+  yDomainMin,
+  yDomainMax,
+}: {
+  yTicks: number[];
+  yDomainMin: number;
+  yDomainMax: number;
+}) {
+  const domainRange = yDomainMax - yDomainMin || 1;
+  function yFor(value: number): number {
+    return (
+      CHART_HEIGHT -
+      CHART_PADDING_Y -
+      ((value - yDomainMin) / domainRange) * (CHART_HEIGHT - CHART_PADDING_Y * 2)
+    );
+  }
+
+  return (
+    <div className={styles.yAxis}>
+      {yTicks.map((tick, i) => (
+        <span
+          key={i}
+          className={styles.yAxisLabel}
+          style={{ top: `${yFor(tick)}px` }}
+        >
+          {tick.toLocaleString("es-AR")}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -338,6 +547,15 @@ export default function DashboardPage() {
     ? Math.max(600, aggregatedDaily.length * PX_PER_ROTATED_LABEL)
     : undefined;
 
+  const displayViews = displayPoints.map((p) => p.views);
+  const yTicks = getNiceTicks(
+    displayViews.length ? Math.min(...displayViews) : 0,
+    displayViews.length ? Math.max(...displayViews) : 1,
+    Y_TICK_COUNT
+  );
+  const yDomainMin = yTicks[0];
+  const yDomainMax = yTicks[yTicks.length - 1];
+
   return (
     <div className={styles.page}>
       <div className={styles.filterBar}>
@@ -446,35 +664,51 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              <div className={styles.chartScrollArea}>
-                <div
-                  className={styles.chartInner}
-                  style={chartMinWidth ? { minWidth: `${chartMinWidth}px` } : undefined}
-                >
-                  <LineChart points={displayPoints} />
-                  {aggregatedDaily.length > 0 && (
-                    <div
-                      className={`${styles.chartLabels} ${
-                        shouldRotateLabels ? styles.chartLabelsRotated : ""
-                      }`}
-                    >
-                      {aggregatedDaily.map((point, i) => {
-                        const t =
-                          aggregatedDaily.length <= 1
-                            ? 0
-                            : i / (aggregatedDaily.length - 1);
-                        return (
-                          <span
-                            key={point.date}
-                            className={styles.chartLabel}
-                            style={{ left: `${t * 100}%` }}
-                          >
-                            {formatAxisLabel(point.date, aggregation)}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
+              <div className={styles.chartRow}>
+                <YAxis
+                  yTicks={yTicks}
+                  yDomainMin={yDomainMin}
+                  yDomainMax={yDomainMax}
+                />
+                <div className={styles.chartScrollArea}>
+                  <div
+                    className={styles.chartInner}
+                    style={
+                      chartMinWidth ? { minWidth: `${chartMinWidth}px` } : undefined
+                    }
+                  >
+                    <LineChart
+                      points={displayPoints}
+                      dataPoints={aggregatedDaily}
+                      aggregation={aggregation}
+                      yDomainMin={yDomainMin}
+                      yDomainMax={yDomainMax}
+                      yTicks={yTicks}
+                    />
+                    {aggregatedDaily.length > 0 && (
+                      <div
+                        className={`${styles.chartLabels} ${
+                          shouldRotateLabels ? styles.chartLabelsRotated : ""
+                        }`}
+                      >
+                        {aggregatedDaily.map((point, i) => {
+                          const t =
+                            aggregatedDaily.length <= 1
+                              ? 0
+                              : i / (aggregatedDaily.length - 1);
+                          return (
+                            <span
+                              key={point.date}
+                              className={styles.chartLabel}
+                              style={{ left: `${t * 100}%` }}
+                            >
+                              {formatAxisLabel(point.date, aggregation)}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

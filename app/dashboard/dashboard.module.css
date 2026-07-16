@@ -188,6 +188,7 @@
   width: 100%;
   height: 160px;
   display: block;
+  touch-action: none;
 }
 
 .chartArea {
@@ -201,6 +202,94 @@
   stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
+}
+
+.gridLine {
+  stroke: #1e293b;
+  stroke-width: 1;
+}
+
+.crosshair {
+  stroke: #334155;
+  stroke-width: 1;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.crosshairVisible {
+  opacity: 1;
+}
+
+.hoverDot {
+  fill: #a78bfa;
+  stroke: #0f172a;
+  stroke-width: 2;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.hoverDotVisible {
+  opacity: 1;
+}
+
+.chartPlot {
+  position: relative;
+}
+
+.tooltip {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 12px));
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 8px 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, left 0.12s ease, top 0.12s ease;
+  z-index: 10;
+}
+
+.tooltipVisible {
+  opacity: 1;
+}
+
+.tooltipLabel {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+.tooltipValue {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.chartRow {
+  display: flex;
+  align-items: flex-start;
+}
+
+.yAxis {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 160px;
+  margin-right: 4px;
+}
+
+.yAxisLabel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: #64748b;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .aggregationRow {
@@ -235,6 +324,8 @@
 }
 
 .chartScrollArea {
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
 }
