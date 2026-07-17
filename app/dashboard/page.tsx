@@ -5,6 +5,7 @@ import styles from "./dashboard.module.css";
 import MetricCard, {
   Aggregation,
   DailyPoint,
+  Insight,
   MetricConfig,
   formatFullDate,
 } from "@/components/MetricCard";
@@ -16,6 +17,7 @@ type Ga4Report = {
   previousTotalViews: number;
   percentChange: number;
   daily: DailyPoint[];
+  insights: Insight[];
 };
 
 const AGGREGATION_OPTIONS: { key: Aggregation; label: string }[] = [
@@ -108,6 +110,7 @@ export default function DashboardPage() {
           totalValue: report.totalViews,
           percentChange: report.percentChange,
           daily: report.daily,
+          insights: report.insights,
         },
       ]
     : [];
@@ -207,6 +210,7 @@ export default function DashboardPage() {
                     totalValue={metric.totalValue}
                     percentChange={metric.percentChange}
                     daily={metric.daily}
+                    insights={metric.insights}
                     aggregation={aggregation}
                     isLoading={isLoading}
                   />

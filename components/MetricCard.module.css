@@ -198,6 +198,49 @@
   white-space: nowrap;
 }
 
+.insights {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.insightRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.insightEmoji {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.positive {
+  background: rgba(74, 222, 128, 0.12);
+  color: #86efac;
+}
+
+.warning {
+  background: rgba(250, 204, 21, 0.12);
+  color: #fde047;
+}
+
+.negative {
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+}
+
+.insightNeutral {
+  background: rgba(148, 163, 184, 0.08);
+  color: #94a3b8;
+}
+
 @media (max-width: 720px) {
   .card {
     padding: 16px 16px 14px;
@@ -205,5 +248,9 @@
 
   .value {
     font-size: 1.8rem;
+  }
+
+  .insightRow {
+    font-size: 0.78rem;
   }
 }

@@ -10,12 +10,20 @@ export type DailyPoint = {
 
 export type Aggregation = "day" | "week" | "month";
 
+export type InsightSeverity = "positive" | "warning" | "negative";
+
+export type Insight = {
+  text: string;
+  severity: InsightSeverity;
+};
+
 export type MetricConfig = {
   key: string;
   title: string;
   totalValue: number;
   percentChange: number;
   daily: DailyPoint[];
+  insights: Insight[];
 };
 
 type NormalizedPoint = {
@@ -420,11 +428,18 @@ function YAxis({
   );
 }
 
+const INSIGHT_EMOJI: Record<InsightSeverity, string> = {
+  positive: "🙂",
+  warning: "😐",
+  negative: "🙁",
+};
+
 type MetricCardProps = {
   title: string;
   totalValue: number;
   percentChange: number;
   daily: DailyPoint[];
+  insights: Insight[];
   aggregation: Aggregation;
   isLoading?: boolean;
 };
@@ -433,6 +448,7 @@ export default function MetricCard({
   title,
   totalValue,
   percentChange,
+  insights,
   daily,
   aggregation,
   isLoading = false,
@@ -586,6 +602,26 @@ export default function MetricCard({
             </div>
           )}
         </div>
+      </div>
+
+      <div className={styles.insights}>
+        {insights.length === 0 ? (
+          <div className={`${styles.insightRow} ${styles.insightNeutral}`}>
+            <span>Sin variaciones destacables en este período</span>
+          </div>
+        ) : (
+          insights.map((insight, i) => (
+            <div
+              key={i}
+              className={`${styles.insightRow} ${styles[insight.severity]}`}
+            >
+              <span className={styles.insightEmoji}>
+                {INSIGHT_EMOJI[insight.severity]}
+              </span>
+              <span>{insight.text}</span>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
