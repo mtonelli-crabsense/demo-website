@@ -20,7 +20,7 @@
 
 .metricTitle {
   font-size: 0.8rem;
-  color: #94a3b8;
+  color: var(--ink-soft);
   font-weight: 500;
 }
 
@@ -32,9 +32,10 @@
 }
 
 .value {
+  font-family: var(--font-mono);
   font-size: 2.2rem;
-  font-weight: 700;
-  color: #f1f5f9;
+  font-weight: 600;
+  color: var(--ink);
   line-height: 1;
   font-variant-numeric: proportional-nums;
 }
@@ -43,6 +44,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: 600;
   padding: 3px 8px;
@@ -56,18 +58,18 @@
 }
 
 .up {
-  color: #4ade80;
-  background: rgba(74, 222, 128, 0.12);
+  color: var(--green);
+  background: var(--green-soft);
 }
 
 .down {
-  color: #f87171;
-  background: rgba(248, 113, 113, 0.12);
+  color: var(--red);
+  background: var(--red-soft);
 }
 
 .flat {
-  color: #94a3b8;
-  background: rgba(148, 163, 184, 0.12);
+  color: var(--ink-soft);
+  background: var(--navy-soft);
 }
 
 .chart {
@@ -78,25 +80,25 @@
 }
 
 .chartArea {
-  fill: rgba(167, 139, 250, 0.15);
+  fill: color-mix(in srgb, var(--navy) 10%, transparent);
   stroke: none;
 }
 
 .chartLine {
   fill: none;
-  stroke: #a78bfa;
+  stroke: var(--navy);
   stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
 
 .gridLine {
-  stroke: #1e293b;
+  stroke: var(--border);
   stroke-width: 1;
 }
 
 .crosshair {
-  stroke: #334155;
+  stroke: var(--ink-faint);
   stroke-width: 1;
   opacity: 0;
   transition: opacity 0.15s ease;
@@ -108,8 +110,8 @@
 }
 
 .hoverDot {
-  fill: #a78bfa;
-  stroke: #0f172a;
+  fill: var(--gold);
+  stroke: var(--surface);
   stroke-width: 2;
   opacity: 0;
   transition: opacity 0.15s ease;
@@ -127,8 +129,8 @@
 .tooltip {
   position: fixed;
   transform: translate(-50%, calc(-100% - 12px));
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: var(--navy-deep);
+  border: none;
   border-radius: 8px;
   padding: 8px 12px;
   white-space: nowrap;
@@ -143,15 +145,17 @@
 }
 
 .tooltipLabel {
+  font-family: var(--font-mono);
   font-size: 0.7rem;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.65);
   margin-bottom: 2px;
 }
 
 .tooltipValue {
+  font-family: var(--font-mono);
   font-size: 0.95rem;
-  font-weight: 700;
-  color: #f1f5f9;
+  font-weight: 600;
+  color: #fff;
 }
 
 .chartRow {
@@ -172,8 +176,9 @@
   left: 0;
   right: 0;
   transform: translateY(-50%);
+  font-family: var(--font-mono);
   font-size: 0.7rem;
-  color: #64748b;
+  color: var(--ink-faint);
   text-align: right;
   white-space: nowrap;
 }
@@ -187,8 +192,9 @@
   position: relative;
   height: 18px;
   margin-top: 8px;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--ink-faint);
 }
 
 .chartLabel {
@@ -201,44 +207,14 @@
 .insights {
   display: flex;
   flex-direction: column;
-  gap: 6px;
   margin-top: 4px;
 }
 
-.insightRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  line-height: 1.45;
-}
-
-.insightEmoji {
-  flex-shrink: 0;
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
-.positive {
-  background: rgba(74, 222, 128, 0.12);
-  color: #86efac;
-}
-
-.warning {
-  background: rgba(250, 204, 21, 0.12);
-  color: #fde047;
-}
-
-.negative {
-  background: rgba(248, 113, 113, 0.12);
-  color: #fca5a5;
-}
-
-.insightNeutral {
-  background: rgba(148, 163, 184, 0.08);
-  color: #94a3b8;
+.insightEmpty {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  padding: 4px 0;
 }
 
 @media (max-width: 720px) {
@@ -248,9 +224,5 @@
 
   .value {
     font-size: 1.8rem;
-  }
-
-  .insightRow {
-    font-size: 0.78rem;
   }
 }

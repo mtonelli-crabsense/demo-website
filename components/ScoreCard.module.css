@@ -1,0 +1,92 @@
+.col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 13px 13px 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.label {
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 7px;
+  min-height: 26px;
+}
+
+.value {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.delta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  margin-top: 6px;
+}
+
+.up {
+  color: var(--green);
+}
+
+.down {
+  color: var(--red);
+}
+
+.flat {
+  color: var(--ink-faint);
+}
+
+.backfillBadge {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--ink-faint);
+  margin-top: 6px;
+}
+
+.unavailable {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  padding: 8px 0 13px;
+}
+
+.convRow {
+  border-top: 1px dashed var(--border);
+  margin: 10px -13px 0;
+  padding: 9px 13px 11px;
+  background: #fafbfc;
+}
+
+.convLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.convValueRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.convValue {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.convDelta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}

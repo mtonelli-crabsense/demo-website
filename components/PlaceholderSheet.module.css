@@ -1,0 +1,74 @@
+.wrap {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 28px 32px 70px;
+}
+
+.role {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+}
+
+.head {
+  padding-bottom: 16px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.head h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--ink);
+}
+
+.desc {
+  color: var(--ink-soft);
+  font-size: 13px;
+  max-width: 560px;
+}
+
+.note {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #7c8aa0;
+  background: var(--navy-soft);
+  border: 1px dashed #c7d4e4;
+  border-radius: 6px;
+  padding: 10px 13px;
+  margin-bottom: 28px;
+  line-height: 1.6;
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.statTile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.statLabel {
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+}
+
+.statValue {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}

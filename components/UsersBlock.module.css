@@ -1,0 +1,91 @@
+.wrap {
+  width: 100%;
+}
+
+.scorecardRow {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+  transition: opacity 0.3s ease;
+}
+
+.dimmed {
+  opacity: 0.55;
+}
+
+.insightsHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.insightsHead h2 {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--ink);
+}
+
+.insightsDesc {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.insightsEmpty {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+}
+
+.insightsBox {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 15px;
+}
+
+.insightsGroup {
+  padding: 8px 0;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0 0 8px;
+}
+
+.groupLabel {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+
+.groupLabelPos {
+  color: var(--green);
+}
+
+.groupLabelNeutral {
+  color: var(--ink-faint);
+}
+
+.groupLabelNeg {
+  color: var(--red);
+}
+
+@media (max-width: 1100px) {
+  .scorecardRow {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .scorecardRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

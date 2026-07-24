@@ -1,3 +1,27 @@
+:root {
+  /* Tema claro del tablero de analytics (dashboard). No se usa en la landing
+     pública, que sigue con el fondo oscuro definido en `body` más abajo. */
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --border: #e3e6eb;
+  --ink: #101826;
+  --ink-soft: #5b6472;
+  --ink-faint: #9aa2af;
+  --navy: #0f2a4a;
+  --navy-deep: #0a1e36;
+  --navy-soft: #e9eef4;
+  --gold: #c89b3c;
+  --gold-soft: #f3e7c9;
+  --green: #1e8e5a;
+  --green-soft: #e4f3eb;
+  --red: #c4472c;
+  --red-soft: #fbe9e4;
+  --font-display: "Fraunces", serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+  --radius: 10px;
+}
+
 * {
   margin: 0;
   padding: 0;

@@ -1,0 +1,75 @@
+.card {
+  border-radius: 9px;
+  padding: 13px 15px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.card:last-child {
+  margin-bottom: 0;
+}
+
+.badge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+.pos {
+  border-left: 3px solid var(--green);
+}
+.pos .badge {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.neg {
+  border-left: 3px solid var(--red);
+}
+.neg .badge {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.neutral {
+  border-left: 3px solid var(--ink-faint);
+}
+.neutral .badge {
+  background: #eef0f3;
+  color: var(--ink-soft);
+}
+
+.text {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  font-style: italic;
+}
+
+/* Peak = pronounced spike, gets extra visual weight. */
+.peak {
+  border-left-width: 4px;
+  padding: 16px 17px;
+  background: linear-gradient(180deg, var(--surface), #fafaf8);
+  box-shadow: 0 1px 3px rgba(16, 24, 38, 0.05);
+}
+.peak .badge {
+  padding: 4px 10px;
+  font-size: 9.5px;
+}
+.peak .text {
+  font-style: normal;
+  color: var(--ink);
+}

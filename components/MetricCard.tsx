@@ -1,21 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import styles from "./MetricCard.module.css";
+import InsightCard, { Insight } from "./InsightCard";
+import {
+  Aggregation,
+  NormalizedPoint,
+  SeriesPoint,
+  aggregateSeries,
+  formatAxisLabel,
+  formatFullDate,
+  formatTooltipLabel,
+  pickLabelIndices,
+  resolvePointerIndex,
+  sampleAt,
+  useAnimatedSeries,
+} from "@/lib/chart-math";
 
-export type DailyPoint = {
-  date: string;
-  views: number;
-};
-
-export type Aggregation = "day" | "week" | "month";
-
-export type InsightSeverity = "positive" | "warning" | "negative";
-
-export type Insight = {
-  text: string;
-  severity: InsightSeverity;
-};
+export type DailyPoint = { date: string; views: number };
+export type { Aggregation, Insight };
+export { formatFullDate };
 
 export type MetricConfig = {
   key: string;
@@ -26,28 +30,8 @@ export type MetricConfig = {
   insights: Insight[];
 };
 
-type NormalizedPoint = {
-  t: number;
-  views: number;
-};
-
-const MONTH_NAMES = [
-  "Ene",
-  "Feb",
-  "Mar",
-  "Abr",
-  "May",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dic",
-];
-
-const SAMPLE_COUNT = 40;
 const ANIMATION_DURATION = 500;
+const SAMPLE_COUNT = 40;
 const MAX_LABELS = 6;
 
 const CHART_WIDTH = 600;
@@ -55,90 +39,6 @@ const CHART_HEIGHT = 160;
 const CHART_PADDING_X = 8;
 const CHART_PADDING_Y = 12;
 const Y_TICK_COUNT = 5;
-
-export function formatFullDate(isoDate: string): string {
-  const [year, month, day] = isoDate.split("-");
-  return `${day}/${month}/${year}`;
-}
-
-function formatDayLabel(isoDate: string): string {
-  const [, month, day] = isoDate.split("-");
-  return `${day}/${month}`;
-}
-
-function parseIsoUTC(isoDate: string): Date {
-  const [y, m, d] = isoDate.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d));
-}
-
-function toIsoUTC(date: Date): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function startOfWeekKey(isoDate: string): string {
-  const date = parseIsoUTC(isoDate);
-  const day = date.getUTCDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  date.setUTCDate(date.getUTCDate() + diffToMonday);
-  return toIsoUTC(date);
-}
-
-function startOfMonthKey(isoDate: string): string {
-  const [y, m] = isoDate.split("-");
-  return `${y}-${m}-01`;
-}
-
-function aggregateDaily(
-  daily: DailyPoint[],
-  aggregation: Aggregation
-): DailyPoint[] {
-  if (aggregation === "day") return daily;
-
-  const keyFn = aggregation === "week" ? startOfWeekKey : startOfMonthKey;
-  const order: string[] = [];
-  const totals = new Map<string, number>();
-
-  for (const point of daily) {
-    const key = keyFn(point.date);
-    if (!totals.has(key)) {
-      totals.set(key, 0);
-      order.push(key);
-    }
-    totals.set(key, totals.get(key)! + point.views);
-  }
-
-  return order.map((key) => ({ date: key, views: totals.get(key)! }));
-}
-
-function formatAxisLabel(isoDate: string, aggregation: Aggregation): string {
-  if (aggregation === "month") {
-    const [year, month] = isoDate.split("-");
-    return `${MONTH_NAMES[Number(month) - 1]} ${year}`;
-  }
-  return formatDayLabel(isoDate);
-}
-
-function formatTooltipLabel(isoDate: string, aggregation: Aggregation): string {
-  if (aggregation === "month") return formatAxisLabel(isoDate, aggregation);
-  if (aggregation === "week") return `Semana del ${formatFullDate(isoDate)}`;
-  return formatFullDate(isoDate);
-}
-
-// Evenly spaced indices into a length-N series, capped at maxLabels — so the
-// axis always fits without rotating or scrolling, regardless of how many
-// points (days, weeks, months) are actually plotted.
-function pickLabelIndices(length: number, maxLabels: number): number[] {
-  if (length <= 0) return [];
-  if (length <= maxLabels) return Array.from({ length }, (_, i) => i);
-  const indices = new Set<number>();
-  for (let i = 0; i < maxLabels; i++) {
-    indices.add(Math.round((i * (length - 1)) / (maxLabels - 1)));
-  }
-  return [...indices].sort((a, b) => a - b);
-}
 
 // "Nice numbers" tick algorithm (Heckbert): rounds the domain out to clean,
 // evenly spaced steps instead of splitting the raw min/max.
@@ -161,11 +61,7 @@ function niceNumber(range: number, round: boolean): number {
   return niceFraction * Math.pow(10, exponent);
 }
 
-function getNiceTicks(
-  rawMin: number,
-  rawMax: number,
-  tickCount: number
-): number[] {
+function getNiceTicks(rawMin: number, rawMax: number, tickCount: number): number[] {
   let min = rawMin;
   let max = rawMax;
   if (min === max) {
@@ -198,49 +94,9 @@ function domainFromValues(values: number[]): Domain {
   return { min: ticks[0], max: ticks[ticks.length - 1] };
 }
 
-// Evenly spaced (not "nice") ticks: used only while the domain is mid-animation,
-// so gridlines glide smoothly instead of jumping to new nice-rounded steps
-// every frame. The real nice ticks are restored once the animation settles.
-function evenTicks(domain: Domain, count: number): number[] {
-  if (domain.min === domain.max) return [Math.round(domain.min)];
-  const ticks: number[] = [];
-  for (let i = 0; i < count; i++) {
-    ticks.push(Math.round(domain.min + ((domain.max - domain.min) * i) / (count - 1)));
-  }
-  return ticks;
-}
-
-function toNormalized(data: DailyPoint[]): NormalizedPoint[] {
-  if (data.length === 0) return [];
-  if (data.length === 1) {
-    // A single point can't draw a polyline: duplicate it into a flat line.
-    return [
-      { t: 0, views: data[0].views },
-      { t: 1, views: data[0].views },
-    ];
-  }
-  return data.map((d, i) => ({ t: i / (data.length - 1), views: d.views }));
-}
-
-function sampleAt(points: NormalizedPoint[], t: number): number {
-  if (points.length === 0) return 0;
-  if (points.length === 1) return points[0].views;
-  if (t <= points[0].t) return points[0].views;
-  if (t >= points[points.length - 1].t) return points[points.length - 1].views;
-  for (let i = 0; i < points.length - 1; i++) {
-    const a = points[i];
-    const b = points[i + 1];
-    if (t >= a.t && t <= b.t) {
-      const frac = b.t === a.t ? 0 : (t - a.t) / (b.t - a.t);
-      return a.views + (b.views - a.views) * frac;
-    }
-  }
-  return points[points.length - 1].views;
-}
-
 type LineChartProps = {
   points: NormalizedPoint[];
-  dataPoints: DailyPoint[];
+  dataPoints: SeriesPoint[];
   aggregation: Aggregation;
   yDomainMin: number;
   yDomainMax: number;
@@ -279,7 +135,7 @@ function LineChart({
   const linePoints = points
     .map((p) => {
       const x = paddingX + p.t * (width - paddingX * 2);
-      return `${x.toFixed(1)},${yFor(p.views).toFixed(1)}`;
+      return `${x.toFixed(1)},${yFor(p.value).toFixed(1)}`;
     })
     .join(" ");
 
@@ -295,12 +151,14 @@ function LineChart({
     const rect = svg.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
 
-    const xViewBox = ((e.clientX - rect.left) / rect.width) * width;
-    const t = Math.min(
-      1,
-      Math.max(0, (xViewBox - paddingX) / (width - paddingX * 2))
-    );
-    const idx = n <= 1 ? 0 : Math.round(t * (n - 1));
+    const { idx } = resolvePointerIndex({
+      clientX: e.clientX,
+      rectLeft: rect.left,
+      rectWidth: rect.width,
+      viewBoxWidth: width,
+      paddingX,
+      pointCount: n,
+    });
 
     const tExactForIdx = n > 1 ? idx / (n - 1) : 0;
     const idxXViewBox = paddingX + tExactForIdx * (width - paddingX * 2);
@@ -387,7 +245,7 @@ function LineChart({
             {formatTooltipLabel(activePoint.date, aggregation)}
           </div>
           <div className={styles.tooltipValue}>
-            {activePoint.views.toLocaleString("es-AR")}
+            {activePoint.value.toLocaleString("es-AR")}
           </div>
         </div>
       )}
@@ -428,12 +286,6 @@ function YAxis({
   );
 }
 
-const INSIGHT_EMOJI: Record<InsightSeverity, string> = {
-  positive: "🙂",
-  warning: "😐",
-  negative: "🙁",
-};
-
 type MetricCardProps = {
   title: string;
   totalValue: number;
@@ -453,84 +305,28 @@ export default function MetricCard({
   aggregation,
   isLoading = false,
 }: MetricCardProps) {
+  const seriesPoints: SeriesPoint[] = useMemo(
+    () => daily.map((d) => ({ date: d.date, value: d.views })),
+    [daily]
+  );
   const aggregatedDaily = useMemo(
-    () => aggregateDaily(daily, aggregation),
-    [daily, aggregation]
+    () => aggregateSeries(seriesPoints, aggregation),
+    [seriesPoints, aggregation]
   );
 
-  const [display, setDisplay] = useState<{
-    points: NormalizedPoint[];
-    yTicks: number[];
-  }>(() => {
-    const points = toNormalized(aggregatedDaily);
-    const domain = domainFromValues(points.map((p) => p.views));
-    return { points, yTicks: getNiceTicks(domain.min, domain.max, Y_TICK_COUNT) };
+  const { points: displayPoints } = useAnimatedSeries(aggregatedDaily, {
+    sampleCount: SAMPLE_COUNT,
+    durationMs: ANIMATION_DURATION,
   });
-  const prevNormalizedRef = useRef<NormalizedPoint[] | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    const targetNormalized = toNormalized(aggregatedDaily);
-
-    if (!prevNormalizedRef.current) {
-      const domain = domainFromValues(targetNormalized.map((p) => p.views));
-      setDisplay({
-        points: targetNormalized,
-        yTicks: getNiceTicks(domain.min, domain.max, Y_TICK_COUNT),
-      });
-      prevNormalizedRef.current = targetNormalized;
-      return;
-    }
-
-    const fromNormalized = prevNormalizedRef.current;
-    const fromDomain = domainFromValues(fromNormalized.map((p) => p.views));
-    const toDomain = domainFromValues(targetNormalized.map((p) => p.views));
-    let startTime: number | null = null;
-
-    function step(timestamp: number) {
-      if (startTime === null) startTime = timestamp;
-      const elapsed = timestamp - startTime;
-      const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-
-      const frame: NormalizedPoint[] = Array.from(
-        { length: SAMPLE_COUNT },
-        (_, i) => {
-          const t = i / (SAMPLE_COUNT - 1);
-          const fromValue = sampleAt(fromNormalized, t);
-          const toValue = sampleAt(targetNormalized, t);
-          return { t, views: fromValue + (toValue - fromValue) * eased };
-        }
-      );
-
-      if (progress < 1) {
-        const domain: Domain = {
-          min: fromDomain.min + (toDomain.min - fromDomain.min) * eased,
-          max: fromDomain.max + (toDomain.max - fromDomain.max) * eased,
-        };
-        setDisplay({ points: frame, yTicks: evenTicks(domain, Y_TICK_COUNT) });
-        animationFrameRef.current = requestAnimationFrame(step);
-      } else {
-        setDisplay({
-          points: targetNormalized,
-          yTicks: getNiceTicks(toDomain.min, toDomain.max, Y_TICK_COUNT),
-        });
-        prevNormalizedRef.current = targetNormalized;
-      }
-    }
-
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-    animationFrameRef.current = requestAnimationFrame(step);
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aggregatedDaily]);
+  const domain = useMemo(
+    () => domainFromValues(displayPoints.map((p) => p.value)),
+    [displayPoints]
+  );
+  const yTicks = useMemo(
+    () => getNiceTicks(domain.min, domain.max, Y_TICK_COUNT),
+    [domain]
+  );
 
   const changeDirection =
     percentChange > 0 ? "up" : percentChange < 0 ? "down" : "flat";
@@ -553,7 +349,6 @@ export default function MetricCard({
     [aggregatedDaily.length]
   );
 
-  const { points: displayPoints, yTicks } = display;
   const yDomainMin = yTicks[0];
   const yDomainMax = yTicks[yTicks.length - 1];
 
@@ -606,21 +401,11 @@ export default function MetricCard({
 
       <div className={styles.insights}>
         {insights.length === 0 ? (
-          <div className={`${styles.insightRow} ${styles.insightNeutral}`}>
+          <div className={styles.insightEmpty}>
             <span>Sin variaciones destacables en este período</span>
           </div>
         ) : (
-          insights.map((insight, i) => (
-            <div
-              key={i}
-              className={`${styles.insightRow} ${styles[insight.severity]}`}
-            >
-              <span className={styles.insightEmoji}>
-                {INSIGHT_EMOJI[insight.severity]}
-              </span>
-              <span>{insight.text}</span>
-            </div>
-          ))
+          insights.map((insight, i) => <InsightCard key={i} {...insight} />)
         )}
       </div>
     </div>
